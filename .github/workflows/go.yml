@@ -22,7 +22,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        go get cmd/kaggle/.
+        go get .
 
     - name: make .env
       run: |
@@ -30,4 +30,4 @@ jobs:
         echo "DISCORD_URL=${{ secrets.DISCORD_URL }}" >> .env
 
     - name: run go
-      run: go run cmd/kaggle/main.go
+      run: go run main.go
