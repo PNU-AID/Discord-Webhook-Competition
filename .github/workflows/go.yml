@@ -22,7 +22,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        go get .
+        go get cmd/kaggle/.
 
     - name: make .env
       run: |
