@@ -4,10 +4,15 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/chromedp/chromedp"
+	"github.com/disgoorg/disgo/webhook"
+	"github.com/joho/godotenv"
 )
 
 type competitionInfo struct {
@@ -24,38 +29,6 @@ func (info competitionInfo) isAvailable() bool {
 		return false
 	}
 	return true
-	// const layout_long = "Mon Jan 02 2006 15:04:05 GMT+0900 (한국 표준시)"
-	// const layout_short = "Feb 1, 2021"
-
-	// start_date := info.start_date
-	// end_date := info.deadline
-
-	// var start_datetime time.Time
-	// var end_datetime time.Time
-	// var err error
-
-	// if strings.Contains(start_date, "GMT") {
-	// 	start_datetime, err = time.Parse(layout_long, start_date)
-	// } else {
-	// 	start_datetime, err = time.Parse(layout_short, start_date)
-	// }
-	// if err != nil {
-	// 	fmt.Println("Can't parse start date. (" + start_date + ")")
-	// }
-
-	// if strings.Contains(end_date, "GMT") {
-	// 	end_datetime, err = time.Parse(layout_long, end_date)
-	// } else {
-	// 	end_datetime, err = time.Parse(layout_short, end_date)
-	// }
-	// if err != nil {
-	// 	fmt.Println("Can't parse start date. (" + start_date + ")")
-	// }
-
-	// fmt.Println(start_datetime)
-	// fmt.Println(end_datetime)
-
-	// return true
 }
 
 func getCompetitionList(body *goquery.Document) []string {
@@ -72,32 +45,21 @@ func getCompetitionInfo(body *goquery.Document) competitionInfo {
 	title := title_elem.Text()
 	desc := title_elem.Nodes[0].NextSibling.FirstChild.FirstChild.Data
 
-	// info_div := body.Find("div.sc-iMXWWd.eEROHA:nth-child(2) div div p:first-child")
 	info_div := body.Find("div[data-testid='competition-detail-render-tid']>div>div:nth-child(6)>div:nth-child(4)>div>div:nth-child(2)>div>div>p:first-child")
 	prize := info_div.Text()
 
 	var start_date string
 	var deadline string
 	body.Find("span[title]").Each(func(i int, s *goquery.Selection) {
-		fmt.Print(i)
-		attr_title, _ := s.Attr("title")
-		fmt.Println(" " + attr_title)
+		attr_title, exist := s.Attr("title")
+		if exist {
+			if i == 1 {
+				start_date = attr_title
+			} else if i == 2 {
+				deadline = attr_title
+			}
+		}
 	})
-	// body.Find("div#abstract>div:nth-child(2)>div>div>div span.sc-cyZbeP.hwHu").Each(func(i int, s *goquery.Selection) {
-	// 	hasChild := len(s.Children().Nodes)
-	// 	var date_string string
-	// 	if hasChild == 1 {
-	// 		date_string, _ = s.Children().First().Attr("title")
-	// 	} else {
-	// 		date_string = s.Text()
-	// 	}
-
-	// 	if i == 0 {
-	// 		start_date = date_string
-	// 	} else if i == 1 {
-	// 		deadline = date_string
-	// 	}
-	// })
 
 	image_elem := body.Find("div[wrap='hide'] img")
 	image_url, exists := image_elem.Attr("src")
@@ -105,17 +67,92 @@ func getCompetitionInfo(body *goquery.Document) competitionInfo {
 		image_url = "No image"
 	}
 
-	fmt.Println(title, "|", desc, "|", prize, "|", start_date, "|", deadline, "|", image_url)
+	// fmt.Println(title, "|", desc, "|", prize, "|", start_date, "|", deadline, "|", image_url)
 	return competitionInfo{title: title, desc: desc, prize: prize, start_date: start_date, deadline: deadline, image_url: image_url}
+}
 
+func formatTimeString(timestring string) string {
+	string_arr := strings.Fields(timestring)
+	weekday := string_arr[0]
+	month := string_arr[1]
+	day := string_arr[2]
+	year := string_arr[3]
+	time := string_arr[4]
+
+	switch month {
+	case "Jan":
+		month = "1"
+	case "Feb":
+		month = "2"
+	case "Mar":
+		month = "3"
+	case "Apr":
+		month = "4"
+	case "May":
+		month = "5"
+	case "Jun":
+		month = "6"
+	case "Jul":
+		month = "7"
+	case "Aug":
+		month = "8"
+	case "Sep":
+		month = "9"
+	case "Oct":
+		month = "10"
+	case "Nov":
+		month = "11"
+	case "Dec":
+		month = "12"
+	default:
+		month = ""
+	}
+
+	switch weekday {
+	case "Mon":
+		weekday = "월"
+	case "Tue":
+		weekday = "화"
+	case "Wed":
+		weekday = "수"
+	case "Thu":
+		weekday = "목"
+	case "Fri":
+		weekday = "금"
+	case "Sat":
+		weekday = "토"
+	case "Sun":
+		weekday = "일"
+	default:
+		weekday = ""
+	}
+
+	return year + "년 " + month + "월 " + day + "일 " + weekday + "요일 " + time
+}
+
+func buildDiscordMessage(info competitionInfo, competitionUrl string) string {
+	title := info.title
+	desc := info.desc
+	prize := info.prize
+	start_date := info.start_date
+	deadline := info.deadline
+	// image_url := info.image_url
+
+	message := "## " + title + "\n**" + desc + "**\n" + "링크 : " + competitionUrl + "\n상금 : " + prize + "\n시작일 : " + formatTimeString(start_date) + "\n종료일 : " + formatTimeString(deadline)
+
+	return message
 }
 
 func main() {
-	// discord_url := "https://discord.com/api/webhooks/1218448415738822726/K57_CJ_NhMkkSQ_JDcdQFp4ee7YCd5LveMbhLhp5Er1gHB6zFIh7t1U2X8ze8BM6ie-D"
-	// client, webhook_err := webhook.NewWithURL(discord_url)
-	// if webhook_err != nil {
-	// 	log.Fatal("Error in discord_url")
-	// }
+	env_err := godotenv.Load()
+	if env_err != nil {
+		log.Fatal("Error loading .env file")
+	}
+	discord_url := os.Getenv("DISCORD_URL")
+	client, webhook_err := webhook.NewWithURL(discord_url)
+	if webhook_err != nil {
+		log.Fatal("Error in discord_url")
+	}
 
 	var competition_url_list []string
 	var base_url string = "https://www.kaggle.com"
@@ -123,20 +160,20 @@ func main() {
 
 	// use when debugging
 
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.Flag("headless", false),
-	)
+	// opts := append(chromedp.DefaultExecAllocatorOptions[:],
+	// 	chromedp.Flag("headless", false),
+	// )
 
-	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
-	defer cancel()
-
-	ctx, cancel := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
-	defer cancel()
-
-	// ctx, cancel := chromedp.NewContext(context.Background())
+	// allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	// defer cancel()
-	// ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
+
+	// ctx, cancel := chromedp.NewContext(allocCtx, chromedp.WithLogf(log.Printf))
 	// defer cancel()
+
+	ctx, cancel := chromedp.NewContext(context.Background())
+	defer cancel()
+	ctx, cancel = context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
 
 	var renderedHTML string
 
@@ -167,6 +204,9 @@ func main() {
 		competition_url_list[i] = base_url + url
 	}
 
+	var discord_content_message string
+	var message_slice []string
+
 	for _, url := range competition_url_list {
 		var renderedCompetition string
 		err := chromedp.Run(
@@ -185,19 +225,27 @@ func main() {
 
 		content := getCompetitionInfo(doc)
 		if content.isAvailable() {
-			fmt.Println(content.title)
+			fmt.Println(content.title, "|", content.desc, "|", content.prize, "|", content.start_date, "|", content.deadline, "|", content.image_url)
+			// fmt.Println(content.title)
 		} else {
 			fmt.Println("end of available competition")
-			// break
+			break
 		}
 
-		// content_message := "## " + content.title
-
+		content_message := buildDiscordMessage(content, url)
+		if utf8.RuneCountInString(discord_content_message)+utf8.RuneCountInString(content_message) > 2000 {
+			message_slice = append(message_slice, discord_content_message)
+			discord_content_message = ""
+		}
+		discord_content_message += content_message + "\n\n"
 		// fmt.Println(content_message)
+	}
+	message_slice = append(message_slice, discord_content_message)
 
-		// _, err_dis := client.CreateContent(content_message)
-		// if err_dis != nil {
-		// 	log.Fatal(err_dis)
-		// }
+	for _, message := range message_slice {
+		_, err_dis := client.CreateContent(message)
+		if err_dis != nil {
+			log.Fatal(err_dis)
+		}
 	}
 }
