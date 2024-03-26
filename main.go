@@ -180,8 +180,8 @@ func main() {
 	err := chromedp.Run(
 		ctx,
 		chromedp.Navigate(base_url_comp),
-		chromedp.WaitEnabled("button.sc-jKfPkT.jycYRR"),
-		chromedp.Click("button.sc-jKfPkT.jycYRR", chromedp.BySearch), // click "All competition" button
+		chromedp.WaitEnabled("button[role='checkbox']"),
+		chromedp.Click("button[role='checkbox']", chromedp.BySearch), // click "All competition" button
 		chromedp.WaitEnabled("button[title='Filters']"),
 		chromedp.Click("button[title='Filters']"),
 		chromedp.WaitEnabled("button[aria-label='Active']"),
