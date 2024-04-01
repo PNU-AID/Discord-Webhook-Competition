@@ -34,9 +34,12 @@ func (info competitionInfo) isAvailable() bool {
 func getCompetitionList(body *goquery.Document) []string {
 	url_list := make([]string, 0, 21)
 	docs := body.Find("div[data-testid='list-view'] div ul li div a")
-	for _, node := range docs.Nodes {
-		url_list = append(url_list, node.Attr[1].Val)
-	}
+	docs.Each(func(i int, s *goquery.Selection) {
+		attr_url, exist := s.Attr("href")
+		if exist {
+			url_list = append(url_list, attr_url)
+		}
+	})
 	return url_list
 }
 
