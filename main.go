@@ -159,7 +159,7 @@ func main() {
 
 	var competition_url_list []string
 	var base_url string = "https://www.kaggle.com"
-	var base_url_comp string = "https://www.kaggle.com/competitions"
+	var base_url_comp string = "https://www.kaggle.com/competitions?listOption=active&sortOption=newest"
 
 	// use when debugging
 
@@ -183,12 +183,6 @@ func main() {
 	err := chromedp.Run(
 		ctx,
 		chromedp.Navigate(base_url_comp),
-		chromedp.WaitEnabled("button[role='checkbox']"),
-		chromedp.Click("button[role='checkbox']", chromedp.BySearch), // click "All competition" button
-		chromedp.WaitEnabled("button[title='Filters']"),
-		chromedp.Click("button[title='Filters']"),
-		chromedp.WaitEnabled("button[aria-label='Active']"),
-		chromedp.Click("button[aria-label='Active']"),
 		chromedp.WaitEnabled("button[aria-label='more_horiz']"), // wait for the comptetion list to be loaded
 		chromedp.OuterHTML("html", &renderedHTML, chromedp.ByQuery),
 	)
