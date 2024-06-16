@@ -183,7 +183,7 @@ func main() {
 	err := chromedp.Run(
 		ctx,
 		chromedp.Navigate(base_url_comp),
-		chromedp.WaitEnabled("button[aria-label='more_horiz']"), // wait for the comptetion list to be loaded
+		chromedp.WaitEnabled("div[data-testid='list-view'] div ul li div a"), // wait for the comptetion list to be loaded
 		chromedp.OuterHTML("html", &renderedHTML, chromedp.ByQuery),
 	)
 	if err != nil {
