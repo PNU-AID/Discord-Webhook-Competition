@@ -52,7 +52,7 @@ def extract_competitions(page):
         competition_nodes = page.query_selector_all("#site-content [class^='MuiListItem-root MuiListItem-gutters']")
         logging.info(f"Found {len(competition_nodes)} competition nodes.")
 
-        for node in competition_nodes[:8]: # 디스코드 글자 수 제한
+        for node in competition_nodes:
             competitions.append(extract_competition_info(node))
 
     except PlaywrightTimeoutError:
@@ -178,14 +178,15 @@ def main():
         browser.close()
         logging.info(f"Extracted {len(competitions)} competition nodes.")
 
-    # Build the message content
-    message_content = build_discord_message(competitions)
-    logging.info("Constructed Discord message.")
-    print(message_content)
-    print(len(message_content))
+    # print(message_content)
+    # print(len(message_content))
     
-    # Send the message to Discord
-    send_discord_message(discord_webhook_url, message_content)
+    # Build and send the message content to Discord    
+    for i in range(0, len(competitions), 8):
+        competition_chunk = competitions[i:i+8]
+        message_content = build_discord_message(competition_chunk)
+        send_discord_message(discord_webhook_url, message_content)
+        logging.info(f"Constructed Discord message for {i} to {i+8}.")
     logging.info("Discord message sent successfully.")
 
 if __name__ == "__main__":
