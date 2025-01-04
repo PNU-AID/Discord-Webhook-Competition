@@ -52,7 +52,7 @@ def extract_competitions(page):
         competition_nodes = page.query_selector_all("#site-content [class^='MuiListItem-root MuiListItem-gutters']")
         logging.info(f"Found {len(competition_nodes)} competition nodes.")
 
-        for node in competition_nodes:
+        for node in competition_nodes[:8]: # 디스코드 글자 수 제한
             competitions.append(extract_competition_info(node))
 
     except PlaywrightTimeoutError:
@@ -120,7 +120,7 @@ def extract_competition_info(node):
             }""",
             hover_element
         ).strip()
-        logging.info(f"{deadline_text}")
+        # logging.info(f"{deadline_text}")
         deadline = format_deadline_text(deadline_text)
         
         url = "https://www.kaggle.com" + node.query_selector("[class^='sc-lgprfV']").get_attribute("href")
@@ -154,10 +154,10 @@ def build_discord_message(competitions):
         message += (
             f"## {competition['title']}\n"
             f"**{competition['desc']}**\n"
-            f"링크: {competition['url']}\n"
+            f"{competition['url']}\n"
             f"상금: {competition['prize']}\n"
             # f"시작일: {start_date}\n"
-            f"종료일: {competition['deadline']}\n\n\n"
+            f"종료일: {competition['deadline']}\n\n"
         )
     return message
 
@@ -182,6 +182,7 @@ def main():
     message_content = build_discord_message(competitions)
     logging.info("Constructed Discord message.")
     print(message_content)
+    print(len(message_content))
     
     # Send the message to Discord
     send_discord_message(discord_webhook_url, message_content)
