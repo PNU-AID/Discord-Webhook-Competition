@@ -163,11 +163,11 @@ def build_discord_message(competitions):
 
 def main():
     # Load environment variables (= Discord URL)
-    # try:
-    #     discord_webhook_url = load_environment()
-    # except EnvironmentError as e:
-    #     logging.critical(e)
-    #     return
+    try:
+        discord_webhook_url = load_environment()
+    except EnvironmentError as e:
+        logging.critical(e)
+        return
 
     # Initialize Playwright and extract competitions
     with sync_playwright() as p:
@@ -184,7 +184,7 @@ def main():
     print(message_content)
     
     # Send the message to Discord
-    # send_discord_message(discord_webhook_url, message_content)
+    send_discord_message(discord_webhook_url, message_content)
     logging.info("Discord message sent successfully.")
 
 if __name__ == "__main__":
