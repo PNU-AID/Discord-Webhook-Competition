@@ -105,7 +105,7 @@ def extract_competition_info(node):
         # Start Data is not exist on web site
         # start_date = node.query_selector_all("span[title]")[1].get_attribute("title").strip()
         
-        hover_element = node.query_selector("[class^='sc-qfuyk'] span")
+        hover_element = node.query_selector("[class^='sc-bSficL'] span")
         hover_element.hover()
         time.sleep(0.5) # 첫 번째 요소에 hover가 적용이 안되는 문제 fix
         
@@ -178,13 +178,11 @@ def main():
         browser.close()
         logging.info(f"Extracted {len(competitions)} competition nodes.")
 
-    # print(message_content)
-    # print(len(message_content))
-    
     # Build and send the message content to Discord    
     for i in range(0, len(competitions), 8):
         competition_chunk = competitions[i:i+8]
         message_content = build_discord_message(competition_chunk)
+        # logging.info(message_content)
         send_discord_message(discord_webhook_url, message_content)
         logging.info(f"Constructed Discord message for {i} to {i+8}.")
     logging.info("Discord message sent successfully.")
