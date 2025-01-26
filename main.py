@@ -98,14 +98,15 @@ def extract_competition_info(node):
     """
     try:
         # Extract competition details
-        title = node.query_selector("[class^='sc-eauhAA']").text_content().strip()
-        desc = node.query_selector("[class^='sc-geXuza']").text_content().strip()
-        prize = node.query_selector("[class^='sc-eauhAA hnTMYu']").text_content().strip()
-        
+        title = node.query_selector("div > a > div > div:nth-of-type(2) > div:nth-of-type(1)").text_content().strip() # [class^='sc-eauhAA']
+        desc = node.query_selector("div > a > div > div:nth-of-type(2) > span:nth-of-type(1)").text_content().strip() # [class^='sc-geXuza']
+        prize = node.query_selector("div > div > div > div").text_content().strip() # [class^='sc-eauhAA hnTMYu']
+        # logging.info(f"{title}, {desc}, {prize}")
+
         # Start Data is not exist on web site
         # start_date = node.query_selector_all("span[title]")[1].get_attribute("title").strip()
         
-        hover_element = node.query_selector("[class^='sc-bSficL'] span")
+        hover_element = node.query_selector("div > a > div > div:nth-of-type(2) > span:nth-of-type(2) > span > span")
         hover_element.hover()
         time.sleep(0.5) # 첫 번째 요소에 hover가 적용이 안되는 문제 fix
         
@@ -123,7 +124,7 @@ def extract_competition_info(node):
         # logging.info(f"{deadline_text}")
         deadline = format_deadline_text(deadline_text)
         
-        url = "https://www.kaggle.com" + node.query_selector("[class^='sc-lgprfV']").get_attribute("href")
+        url = "https://www.kaggle.com" + node.query_selector("div > a").get_attribute("href") # [class^='sc-lgprfV']
 
         return {
             "title": title,
@@ -182,7 +183,7 @@ def main():
     for i in range(0, len(competitions), 8):
         competition_chunk = competitions[i:i+8]
         message_content = build_discord_message(competition_chunk)
-        # logging.info(message_content)
+        logging.info(message_content)
         send_discord_message(discord_webhook_url, message_content)
         logging.info(f"Constructed Discord message for {i} to {i+8}.")
     logging.info("Discord message sent successfully.")
