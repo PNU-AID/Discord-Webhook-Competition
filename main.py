@@ -1,27 +1,32 @@
 import os
 import logging
-import time
 from dotenv import load_dotenv
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+from playwright.sync_api import sync_playwright
 import requests
 
-# Configure logging
+from sites.kaggle import extract_competitions as extract_kaggle, build_discord_message as build_kaggle_msg
+from sites.devEvent import extract_competitions as extract_devEvent, build_discord_message as build_devEvent_msg
+from sites.dacon import extract_competitions as extract_dacon, build_discord_message as build_dacon_msg
+from sites.contestKorea import extract_competitions as extract_contestKorea, build_discord_message as build_contestKorea_msg
+
+
+# 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def load_environment():
     """
-    Load environment variables from .env file.
+    .env 파일에서 환경변수 불러오기
     """
     load_dotenv()
     discord_url = os.getenv("DISCORD_URL")
     if not discord_url:
-        logging.error("DISCORD_URL not found in environment variables.")
+        logging.error("환경변수에 DISCORD_URL이 존재하지 않습니다.")
         raise EnvironmentError("DISCORD_URL not found in environment variables.")
     return discord_url
 
 def send_discord_message(webhook_url, content):
     """
-    Send a message to Discord using the provided webhook URL.
+    디스코드 웹훅을 통해 메시지 전송
     """
     data = {
         "content": content,
@@ -29,164 +34,50 @@ def send_discord_message(webhook_url, content):
     try:
         response = requests.post(webhook_url, json=data)
         if response.status_code != 204:
-            logging.error(f"Failed to send Discord message: {response.status_code} - {response.text}")
+            logging.error(f"디스코드 메시지 전송 실패: {response.status_code} - {response.text}")
     except Exception as e:
-        logging.error(f"Exception while sending Discord message: {e}")
+        logging.error(f"디스코드 메시지 전송 중 예외 발생: {e}")
 
-def extract_competitions(page):
-    """
-    Extract competition data from Kaggle's webpage.
-    """
-    competitions = []
-    try:
-        # Navigate to the events page
-        web_url = "https://www.kaggle.com/competitions?listOption=active&sortOption=newest"
-        logging.info(f"Navigating to {web_url}")
-        page.goto(web_url, timeout=60000)
-        page.wait_for_selector("div[data-testid='list-view']", timeout=30000)
-        
-        # Wait additional time to ensure all events are loaded
-        time.sleep(3)
 
-        # Get all competition containers
-        competition_nodes = page.query_selector_all("#site-content [class^='MuiListItem-root MuiListItem-gutters']")
-        logging.info(f"Found {len(competition_nodes)} competition nodes.")
-
-        for node in competition_nodes:
-            competitions.append(extract_competition_info(node))
-
-    except PlaywrightTimeoutError:
-        logging.error("Timeout while loading the Kaggle competition page.")
-    except Exception as e:
-        logging.error(f"Unexpected error: {e}")
-        
-    logging.info(f"Total filtered events: {len(competitions)}")
-    return competitions
-
-def format_deadline_text(deadline_text):
-    """
-    Format the deadline_text based on its content. "YYYY년 M월 D일 요일 HH:MM:SS"
-    """
-    if deadline_text == "Ongoing":
-        return deadline_text
-
-    if deadline_text.startswith("Deadline: "):
-        # date_text = date_text.rsplit(' GMT', 1)[0]
-        # date_text = date_text.replace("오전", "AM").replace("오후", "PM")
-        # date_text = re.sub(r"(\D)(\d)(?=\.)", r"\g<1>0\g<2>", date_text)
-
-        try:
-            date_text = deadline_text.replace("Deadline: ", "").strip()
-            
-            # Parse the remaining text into a datetime object
-            # deadline = datetime.strptime(date_text, "%Y. %m. %d. %I시 %M분 %S초 %p") # GMT%z  %p
-            
-            # Format the datetime object into the desired format
-            # formatted_deadline = deadline.strftime("%Y년 %m월 %d일 %A %H:%M:%S")
-            return date_text # formatted_deadline
-        except ValueError as e:
-            # Handle parsing errors gracefully
-            logging.error(f"Error parsing deadline text: {date_text} - {e}")
-            return deadline_text
-        
-    # Return the text as is if it doesn't match the expected format
-    return deadline_text
-    
-def extract_competition_info(node):
-    """
-    Extract detailed information about a specific competition.
-    """
-    try:
-        # Extract competition details
-        title = node.query_selector("div > a > div > div:nth-of-type(2) > div:nth-of-type(1)").text_content().strip() # [class^='sc-eauhAA']
-        desc = node.query_selector("div > a > div > div:nth-of-type(2) > span:nth-of-type(1)").text_content().strip() # [class^='sc-geXuza']
-        prize = node.query_selector("div > div > div > div").text_content().strip() # [class^='sc-eauhAA hnTMYu']
-        # logging.info(f"{title}, {desc}, {prize}")
-
-        # Start Data is not exist on web site
-        # start_date = node.query_selector_all("span[title]")[1].get_attribute("title").strip()
-        
-        hover_element = node.query_selector("div > a > div > div:nth-of-type(2) > span:nth-of-type(2) > span > span")
-        hover_element.hover()
-        time.sleep(0.5) # 첫 번째 요소에 hover가 적용이 안되는 문제 fix
-        
-        deadline_text = hover_element.evaluate(
-            """(hoverElement) => {
-                const rect = hoverElement.getBoundingClientRect();
-                const element = document.elementFromPoint(
-                    rect.left + rect.width / 2,
-                    rect.top + rect.height / 2
-                );
-                return element?.innerText || '';
-            }""",
-            hover_element
-        ).strip()
-        # logging.info(f"{deadline_text}")
-        deadline = format_deadline_text(deadline_text)
-        
-        url = "https://www.kaggle.com" + node.query_selector("div > a").get_attribute("href") # [class^='sc-lgprfV']
-
-        return {
-            "title": title,
-            "desc": desc,
-            "prize": prize,
-            # "start_date": start_date,
-            "deadline": deadline,
-            "url": url
-        }
-
-    except PlaywrightTimeoutError:
-        logging.error(f"Timeout while loading competition details: {url}") # {url}
-    except Exception as e:
-        logging.error(f"Error extracting competition info from : {e}") # {url}
-    return None
-
-def build_discord_message(competitions):
-    """
-    Build the Discord message content from the list of competitions.
-    """
-    if not competitions:
-        return "## 진행중인 대회가 없습니다."
-    
-    message = ""
-    for competition in competitions:
-        # start_date = competition["start_date"]
-        # deadline = competition["deadline"]
-        message += (
-            f"## {competition['title']}\n"
-            f"**{competition['desc']}**\n"
-            f"{competition['url']}\n"
-            f"상금: {competition['prize']}\n"
-            # f"시작일: {start_date}\n"
-            f"종료일: {competition['deadline']}\n\n"
-        )
-    return message
 
 def main():
-    # Load environment variables (= Discord URL)
+    # .env에서 환경변수 로딩 (디스코드 URL)
     try:
         discord_webhook_url = load_environment()
     except EnvironmentError as e:
         logging.critical(e)
         return
 
-    # Initialize Playwright and extract competitions
+    # Playwright 실행 및 대회 정보 수집 후 전송
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context()
         page = context.new_page()
-        competitions = extract_competitions(page)
-        browser.close()
-        logging.info(f"Extracted {len(competitions)} competition nodes.")
+        
+        # 모든 사이트에 대해 대회 수집 및 메시지 생성
+        for extract_fn, build_msg_fn, site_name in [
+                (extract_devEvent, build_devEvent_msg, "devEvent"),
+                (extract_kaggle, build_kaggle_msg, "Kaggle"),
+                (extract_contestKorea, build_contestKorea_msg, "contestKorea"),
+                (extract_dacon, build_dacon_msg, "DACON"),
+            ]:
+                try:
+                    logging.info(f"=== {site_name} 시작 ===")
+                    competitions = extract_fn(page)
+                    logging.info(f"{site_name}에서 {len(competitions)}개 추출됨")
 
-    # Build and send the message content to Discord    
-    for i in range(0, len(competitions), 8):
-        competition_chunk = competitions[i:i+8]
-        message_content = build_discord_message(competition_chunk)
-        logging.info(message_content)
-        send_discord_message(discord_webhook_url, message_content)
-        logging.info(f"Constructed Discord message for {i} to {i+8}.")
-    logging.info("Discord message sent successfully.")
+                    for i in range(0, len(competitions), 8):
+                        chunk = competitions[i:i+8]
+                        message = build_msg_fn(chunk, first_chunk=(i == 0))
+                        logging.info(f"[{site_name}] {i}~{i+len(chunk)}개 메시지:\n{message}")
+                        send_discord_message(discord_webhook_url, message)
+
+                except Exception as e:
+                    logging.error(f"{site_name} 처리 중 오류 발생: {e}")
+
+        browser.close()
+
+    logging.info("모든 디스코드 메시지 전송 완료.")
 
 if __name__ == "__main__":
     main()
