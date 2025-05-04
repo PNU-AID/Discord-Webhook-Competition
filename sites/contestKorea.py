@@ -121,11 +121,11 @@ def build_discord_message(competitions, first_chunk=True):
     대회 리스트를 디스코드 메시지 형식으로 변환
     """
     if not competitions:
-        return "## contestKorea에 올라온 진행 중인 대회가 없습니다."
+        return "## 🟧 contestKorea에 올라온 진행 중인 대회가 없습니다. 🟧\n"
     
     message = ""
     if first_chunk:
-        message += "# contestKorea: 진행 중인 대회\n"
+        message += "# 🟧 contestKorea: 진행 중인 대회 🟧\n"
         
     for competition in competitions:
         message += (

@@ -1,7 +1,20 @@
 import logging
 import time
+from datetime import datetime, timedelta
+import re
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from model import is_ai_related
+
+def format_deadline_text(deadline_text):
+    match = re.search(r"D-(\d+)", deadline_text)
+    if match:
+        try:
+            days_left = int(match.group(1))
+            deadline_date = datetime.now() + timedelta(days=days_left)
+            return deadline_date.strftime("%Y년 %m월 %d일")
+        except ValueError:
+            pass  # 실패 시 원문 유지
+    return deadline_text
 
 def extract_competition_info(node):
     """
@@ -29,7 +42,8 @@ def extract_competition_info(node):
 
         # 대회 날짜 추출
         deadline_element = node.query_selector("[class='d-day']")
-        deadline = deadline_element.text_content().strip() if deadline_element else "No Deadline"
+        deadline_text = deadline_element.text_content().strip() if deadline_element else "No Deadline"
+        deadline = format_deadline_text(deadline_text)
 
         # 대회 상금 추출
         prize_element = node.query_selector("[class='price']")
@@ -93,11 +107,11 @@ def build_discord_message(competitions, first_chunk=True):
     대회 리스트를 디스코드 메시지 형식으로 변환
     """
     if not competitions:
-        return "## DACON에 올라온 진행 중인 대회가 없습니다."
+        return "## 🌀 DACON에 올라온 진행 중인 대회가 없습니다. 🌀\n"
     
     message = ""
     if first_chunk:
-        message += "# DACON: 진행 중인 대회\n"
+        message += "# 🌀 DACON: 진행 중인 대회 🌀\n"
         
     for competition in competitions:
         message += (
