@@ -70,7 +70,7 @@ def main():
                         chunk = competitions[i:i+8]
                         message = build_msg_fn(chunk, first_chunk=(i == 0))
                         logging.info(f"[{site_name}] {i}~{i+len(chunk)}개 메시지:\n{message}")
-                        send_discord_message(discord_webhook_url, message)
+                        # send_discord_message(discord_webhook_url, message)
 
                 except Exception as e:
                     logging.error(f"{site_name} 처리 중 오류 발생: {e}")

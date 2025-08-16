@@ -24,7 +24,7 @@ def extract_competition_info(node):
 
         # 대회 URL 추출
         link_element = node.query_selector("a")
-        url = "<" + link_element.get_attribute("href").strip() + ">" if link_element else "No URL"
+        url = "<https://dev-event.vercel.app" + link_element.get_attribute("href").strip() + ">" if link_element else "No URL"
 
         # 대회 날짜 추출
         date_element = node.query_selector("[class^='Item_date__date__']") # .Item_date__date__CoMqV

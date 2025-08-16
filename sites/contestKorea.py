@@ -81,7 +81,7 @@ def extract_competitions(page):
 
     try:
         # 대회 페이지로 이동
-        web_url = "https://www.contestkorea.com/sub/list.php?int_gbn=1&Txt_bcode=030510001"
+        web_url = "https://www.contestkorea.com/sub/list.php?int_gbn=1&Txt_bcode=030310001"
         logging.info(f"Navigating to {web_url}")
         page.goto(web_url, timeout=60000)
         page.wait_for_selector("[class='conditional_search']", timeout=30000) 
